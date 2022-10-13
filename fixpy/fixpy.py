@@ -58,13 +58,17 @@ class Variable:
             self.observe(value)
 
     def enable_update(self):
+        self._lock.acquire()
         self._disable_update = False
+        self._lock.release()
 
     def disable_update(self):
         """
         by disabling updates, this Variable will not be updated by other observing Variables anymore
         """
+        self._lock.acquire()
         self._disable_update = True
+        self._lock.release()
 
     def get_nodes_and_edges(self, nodes=[], edges=[]):
         if self not in nodes:
@@ -153,7 +157,9 @@ class Variable:
         if animate_graph:
             self.plot(blocking=False, show_values=True)
 
+        self._lock.acquire()
         self._value = new_value if self.alpha is None else (1-self.alpha)*self._value + self.alpha * new_value
+        self._lock.release()
         self._send_updates(None if max_recursions is None else max_recursions-1, animate_graph)
         if self.alpha is not None:
             self._update_value(tmp_new_value, None if max_recursions is None else max_recursions-1, animate_graph)
@@ -321,7 +327,9 @@ class Function(Variable):
         if animate_graph:
             self.plot(blocking=False, show_values=True)
 
+        self._lock.acquire()
         self._value = new_value if self.alpha is None else (1-self.alpha)*self._value + self.alpha * new_value
+        self._lock.release()
         self._send_updates(None if max_recursions is None else max_recursions-1, animate_graph)
         if self.alpha is not None:
             self._update_value(tmp_new_value, None if max_recursions is None else max_recursions-1, animate_graph)
