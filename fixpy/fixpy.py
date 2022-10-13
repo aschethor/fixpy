@@ -10,6 +10,12 @@ def eps(abs_error=1e-8, rel_error=1e-8):
     return _margin
 
 
+def array_eps(abs_error=1e-8, rel_error=1e-8):
+    def _margin(x, y):
+        return (np.max(abs(np.log(abs(x))-np.log(abs(y)))) < rel_error and np.all(x*y >= 0)) and np.max(abs(x-y)) < abs_error
+    return _margin
+
+
 def no_change():
     def _no_change(x, y):
         return x == y
@@ -33,6 +39,8 @@ class Variable:
         if still_ok is None:
             if type(value) == str:
                 still_ok = no_change()
+            elif type(value) == np.ndarray:
+                still_ok = array_eps()
             else:
                 still_ok = eps()
         self._value = value.get_value() if isinstance(value, Variable) else value
@@ -152,13 +160,24 @@ class Variable:
 
     @staticmethod
     def set_values(variables, new_values):
+        """
+        set values of multiple variables at the same time (might be useful, if there are interdependencies between these
+        variables that should not affect each other)
+        :param variables: list of variables to set
+        :param new_values: list of new values
+        """
         tmp_disable_updates = [var._disable_update for var in variables]
         for var in variables:
+            var._lock.acquire()
             var._disable_update = True
+        for var, val in zip(variables, new_values):
+            if not var._still_ok(var._value, val):
+                var._value = val
         for var, val in zip(variables, new_values):
             var.set_value(val)
         for var, tmp_disable_update in zip(variables, tmp_disable_updates):
             var._disable_update = tmp_disable_update
+            var._lock.release()
 
     def observe(self, other: 'Variable'):
         other._observers.append(self)
@@ -201,8 +220,11 @@ class Variable:
         """
         self._callbacks.append(callback)
 
-    def remove_callback(self, callback):
-        self._callbacks.remove(callback)
+    def remove_callback(self, callback=None):
+        if callback is None:
+            self._callbacks = []
+        else:
+            self._callbacks.remove(callback)
 
     # shortcuts
     @property
@@ -216,6 +238,12 @@ class Variable:
     def __lshift__(self, other: 'Variable'):
         self.observe(other)
 
+    def __rlshift__(self, other):
+        if isinstance(other, Variable):
+            other.observe(self)
+        else:
+            self.on_change(other)
+
     def __rshift__(self, other):
         if isinstance(other, Variable):
             other.observe(self)
@@ -223,44 +251,44 @@ class Variable:
             self.on_change(other)
 
     def __add__(self, other):
-        return Function(lambda a, b: a + b, [self, other], name="add", still_ok=self._still_ok)
+        return Function(lambda a, b: a + b, [self, other], name="add")
 
     def __sub__(self, other):
-        return Function(lambda a, b: a - b, [self, other], name="sub", still_ok=self._still_ok)
+        return Function(lambda a, b: a - b, [self, other], name="sub")
 
     def __mul__(self, other):
-        return Function(lambda a, b: a * b, [self, other], name="mul", still_ok=self._still_ok)
+        return Function(lambda a, b: a * b, [self, other], name="mul")
 
     def __truediv__(self, other):
-        return Function(lambda a, b: a / b, [self, other], name="div", still_ok=self._still_ok)
+        return Function(lambda a, b: a / b, [self, other], name="div")
 
     def __pow__(self, other, modulo=None):
-        return Function(lambda a, b: a ** b, [self, other], name="pow", still_ok=self._still_ok)
+        return Function(lambda a, b: a ** b, [self, other], name="pow")
 
     def __radd__(self, other):
-        return Function(lambda a, b: a + b, [other, self], name="radd", still_ok=self._still_ok)
+        return Function(lambda a, b: a + b, [other, self], name="radd")
 
     def __rsub__(self, other):
-        return Function(lambda a, b: a - b, [other, self], name="rsub", still_ok=self._still_ok)
+        return Function(lambda a, b: a - b, [other, self], name="rsub")
 
     def __rmul__(self, other):
-        return Function(lambda a, b: a * b, [other, self], name="rmul", still_ok=self._still_ok)
+        return Function(lambda a, b: a * b, [other, self], name="rmul")
 
     def __rtruediv__(self, other):
-        return Function(lambda a, b: a / b, [other, self], name="rdiv", still_ok=self._still_ok)
+        return Function(lambda a, b: a / b, [other, self], name="rdiv")
 
     def __rpow__(self, other, modulo=None):
-        return Function(lambda a, b: a ** b, [other, self], name="rpow", still_ok=self._still_ok)
+        return Function(lambda a, b: a ** b, [other, self], name="rpow")
 
     def __neg__(self):
-        return Function(lambda a: -a, [self], name="neg", still_ok=self._still_ok)
+        return Function(lambda a: -a, [self], name="neg")
 
     def sqrt(self):
-        return Function(lambda a: np.sqrt(a), [self], name="sqrt", still_ok=self._still_ok)
+        return Function(lambda a: np.sqrt(a), [self], name="sqrt")
 
 
 class Function(Variable):
-    def __init__(self, fun, parameters, still_ok=eps(), max_recursions=None, name=None, alpha=None):
+    def __init__(self, fun, parameters, still_ok=None, max_recursions=None, name=None, alpha=None):
         super().__init__(fun(*[p.get_value() if isinstance(p, Variable) else p for p in parameters]), still_ok,
                          max_recursions, name, alpha)
         self._fun = fun

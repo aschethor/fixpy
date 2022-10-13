@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.0.1'
+VERSION = '0.0.3'
 DESCRIPTION = 'Simple event-driven programming'
 LONG_DESCRIPTION = 'A package that facilitates event-driven programming in python'
 
@@ -21,10 +21,10 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['threading', 'matplotlib', 'numpy', 'networkx'],
+    install_requires=['matplotlib', 'numpy', 'networkx'],
     keywords=['python', 'event', 'events', 'event-driven', 'fixed-point iteration'],
     classifiers=[
-        "Development Status :: 1 - Planning",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
         "Operating System :: Unix",
