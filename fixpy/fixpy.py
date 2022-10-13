@@ -159,7 +159,7 @@ class Variable:
             self._update_value(tmp_new_value, None if max_recursions is None else max_recursions-1, animate_graph)
 
     @staticmethod
-    def set_values(variables, new_values):
+    def set_values(variables, new_values, animate_graph=False):
         """
         set values of multiple variables at the same time (might be useful, if there are interdependencies between these
         variables that should not affect each other)
@@ -174,7 +174,7 @@ class Variable:
             if not var._still_ok(var._value, val):
                 var._value = val
         for var, val in zip(variables, new_values):
-            var.set_value(val)
+            var._send_updates(var._max_recursions, animate_graph)
         for var, tmp_disable_update in zip(variables, tmp_disable_updates):
             var._disable_update = tmp_disable_update
             var._lock.release()
