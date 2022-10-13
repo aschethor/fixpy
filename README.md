@@ -177,7 +177,7 @@ p >> (lambda y: (plt.plot(x.x,y), plt.show())) # replot polynome automatically, 
 
 Variable.set_values(coefficients,[1,1,-1]) # multiple variables can be set at the same time with set_values() => this triggers the replot callback
 ```
-If you want to define your own Variables with customized funtions, you can inherit from Variable as follows:
+If you want to define your own Variables with customized functions, you can inherit from Variable as follows:
 
 ```python
 class Inversion(Variable):

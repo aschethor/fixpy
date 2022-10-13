@@ -4,19 +4,44 @@ import matplotlib.pyplot as plt
 import threading
 
 
-def eps(abs_error=1e-8, rel_error=1e-8):
+def eps(abs_error=1e-8, rel_error=None, and_or=True):
+    """
+    :param abs_error: absolute error that is still ok (if None: abs_error is ignored)
+    :param rel_error: relative error that is still ok (if None: rel_error is ignored)
+    :param and_or: specify if absolute and relative errors should be combined by 'and' (True) / 'or' (False)
+    :return: True if absolute and / or relative error fall below a certain margin
+    """
     def _margin(x, y):
-        return (abs(np.log(abs(x))-np.log(abs(y))) < rel_error and x*y >= 0) and abs(x-y) < abs_error
+        if x == y:
+            return True
+        if and_or:
+            return (rel_error is None or (abs(np.log(abs(x))-np.log(abs(y))) < rel_error and x*y >= 0)) and (abs_error is None or abs(x-y) < abs_error)
+        else:
+            return (rel_error is None or (abs(np.log(abs(x))-np.log(abs(y))) < rel_error and x*y >= 0)) or (abs_error is None or abs(x-y) < abs_error)
     return _margin
 
 
-def array_eps(abs_error=1e-8, rel_error=1e-8):
+def array_eps(abs_error=1e-8, rel_error=None, and_or=True):
+    """
+    :param abs_error: absolute error that is still ok (if None: abs_error is ignored)
+    :param rel_error: relative error that is still ok (if None: rel_error is ignored)
+    :param and_or: specify if absolute and relative errors should be combined by 'and' (True) / 'or' (False)
+    :return: True if both, absolute and relative error fall below a certain margin
+    """
     def _margin(x, y):
-        return (np.max(abs(np.log(abs(x))-np.log(abs(y)))) < rel_error and np.all(x*y >= 0)) and np.max(abs(x-y)) < abs_error
+        if np.all(x == y):
+            return True
+        if and_or:
+            return (rel_error is None or (np.max(abs(np.log(abs(x))-np.log(abs(y)))) < rel_error and np.all(x*y >= 0))) and (abs_error is None or np.max(abs(x-y)) < abs_error)
+        else:
+            return (rel_error is None or (np.max(abs(np.log(abs(x))-np.log(abs(y)))) < rel_error and np.all(x*y >= 0))) or (abs_error is None or np.max(abs(x-y)) < abs_error)
     return _margin
 
 
 def no_change():
+    """
+    :return: True if new and old value are exactly the same
+    """
     def _no_change(x, y):
         return x == y
     return _no_change
@@ -105,7 +130,7 @@ class Variable:
         label_dict = {}
         for n in nodes:
             if show_values:
-                label_dict[n] = str(n)+":\n"+str(round(n._value,3))
+                label_dict[n] = str(n)+":\n"+str(np.round(n._value,3))
             else:
                 label_dict[n] = str(n)
 
@@ -185,10 +210,10 @@ class Variable:
             var._disable_update = tmp_disable_update
             var._lock.release()
 
-    def observe(self, other: 'Variable'):
+    def observe(self, other: 'Variable', animate_graph=False):
         other._observers.append(self)
         self._observing.append(other)
-        self._update_value(other, self._max_recursions)
+        self._update_value(other, self._max_recursions, animate_graph=animate_graph)
 
     def remove_observers(self, observers=None):
         """
